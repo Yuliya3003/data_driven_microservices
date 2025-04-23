@@ -73,8 +73,8 @@ jobs:
           echo "$DEPLOY_KEY" > deploy_key
           chmod 600 deploy_key
           ssh -i deploy_key -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_SERVER << 'EOF'
-            mkdir -p ~/taskmanager
-            cd ~/taskmanager
+            mkdir -p ~/data_driven_microservices
+            cd ~/data_driven_microservices
             docker-compose down
             docker-compose pull
             docker-compose up -d
