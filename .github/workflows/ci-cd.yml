@@ -57,6 +57,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Check if prometheus.yml exists
+        run: |
+          ls -la
+          if [ -f "./prometheus.yml" ]; then
+            echo "prometheus.yml found"
+            cat ./prometheus.yml
+          else
+            echo "prometheus.yml NOT found"
+            exit 1
+          fi
+
       - name: Install Docker Compose
         run: |
           sudo apt-get update
@@ -83,6 +94,15 @@ jobs:
         run: |
           docker-compose build
           docker-compose push
+          docker-compose up -d
+
+      - name: Check Prometheus logs
+        run: |
+          docker-compose logs prometheus
+
+      - name: Wait for Prometheus to collect metrics
+        run: |
+          sleep 30
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -96,7 +116,7 @@ jobs:
       - name: Generate metrics HTML
         run: |
           python generate_metrics_page.py
-          ls -la public  
+          ls -la public
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0.0
@@ -107,5 +127,7 @@ jobs:
         env:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+
 
 
