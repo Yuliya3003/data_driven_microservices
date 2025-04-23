@@ -1,0 +1,9 @@
+com\example\taskservice\config\WebClientConfig.class
+com\example\taskservice\repository\TaskRepository.class
+com\example\taskservice\config\SecurityConfig.class
+com\example\taskservice\dto\UserDTO.class
+com\example\taskservice\dto\TaskDTO.class
+com\example\taskservice\controller\TaskController.class
+com\example\taskservice\service\TaskService.class
+com\example\taskservice\TaskServiceApplication.class
+com\example\taskservice\model\Task.class

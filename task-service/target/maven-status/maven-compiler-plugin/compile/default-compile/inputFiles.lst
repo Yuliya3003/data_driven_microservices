@@ -1,0 +1,9 @@
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\config\SecurityConfig.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\config\WebClientConfig.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\controller\TaskController.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\dto\TaskDTO.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\dto\UserDTO.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\model\Task.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\repository\TaskRepository.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\service\TaskService.java
+D:\IdeaProjects\data_driven_microservices\task-service\src\main\java\com\example\taskservice\TaskServiceApplication.java

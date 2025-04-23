@@ -1,0 +1,8 @@
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\config\JwtAuthenticationFilter.java
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\config\SecurityConfig.java
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\controller\AuthController.java
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\controller\UserController.java
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\model\User.java
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\repository\UserRepository.java
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\service\UserService.java
+D:\IdeaProjects\data_driven_microservices\user-service\src\main\java\com\example\userservice\UserServiceApplication.java
