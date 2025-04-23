@@ -90,6 +90,25 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Create prometheus.yml
+        run: |
+          cat <<EOF > prometheus.yml
+          global:
+            scrape_interval: 15s
+          scrape_configs:
+            - job_name: 'api-gateway'
+              static_configs:
+                - targets: ['api-gateway:8080']
+            - job_name: 'user-service'
+              static_configs:
+                - targets: ['user-service:8081']
+            - job_name: 'task-service'
+              static_configs:
+                - targets: ['task-service:8082']
+          EOF
+          ls -la prometheus.yml
+          cat prometheus.yml
+
       - name: Build and push Docker images
         run: |
           docker-compose build
