@@ -77,6 +77,18 @@ jobs:
           docker-compose build
           docker-compose push
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        run: |
+          pip install requests
+
+      - name: Generate metrics HTML
+        run: |
+          python generate_metrics_page.py
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0.0
@@ -87,27 +99,6 @@ jobs:
         env:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-
-
-  generate-metrics-page:
-    runs-on: ubuntu-latest
-    needs: deploy
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-          pip install requests
-
-      - name: Generate metrics HTML
-        run: |
-          python generate_metrics_page.py
 
       - name: Deploy HTML to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
