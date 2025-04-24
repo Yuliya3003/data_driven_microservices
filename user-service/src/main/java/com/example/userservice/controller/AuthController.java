@@ -39,18 +39,18 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User user) {
-        System.out.println("Received login request for user: " + user.getUsername());
-        System.out.println("Attempting authentication with password: " + user.getPassword());
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
             );
-            System.out.println("User authenticated successfully: " + user.getUsername());
 
-            return ResponseEntity.ok("Login successful");
+            String token = Jwts.builder()
+                    .setSubject(user.getUsername())
+                    .setExpiration(new Date(System.currentTimeMillis() + 86400000))
+                    .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()), SignatureAlgorithm.HS512)
+                    .compact();
+            return ResponseEntity.ok(new HashMap<String, String>() {{ put("token", token); }});
         } catch (Exception e) {
-            System.err.println("Error during login: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(401).body("Login failed: " + e.getMessage());
         }
     }

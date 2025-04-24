@@ -35,7 +35,7 @@ jobs:
           cd ../task-service && mvn test
           cd ../api_gateway && mvn test
 
-  deploy:
+  deploy-and-monitor:
     runs-on: ubuntu-latest
     needs: build-and-test
     steps:
@@ -83,13 +83,13 @@ jobs:
           docker-compose build
           docker-compose push
 
-      - name: Start microservices with Docker Compose
-        run: docker-compose up -d
-
       - name: Create Docker network if not exists
         run: |
           docker network inspect microservices-net >/dev/null 2>&1 || \
           docker network create microservices-net
+
+      - name: Start microservices with Docker Compose
+        run: docker-compose up -d
 
       - name: Start Prometheus manually
         run: |
@@ -114,7 +114,7 @@ jobs:
           curl http://localhost:9090/api/v1/status/config || echo "Failed to get Prometheus config"
           curl http://localhost:9090/api/v1/targets || echo "Failed to get Prometheus targets"
 
-      - name: Wait for Prometheus to collect metrics
+      - name: Wait for Prometheus to collect initial metrics
         run: sleep 60
 
       - name: Set up Python
@@ -125,22 +125,71 @@ jobs:
       - name: Install Python dependencies
         run: pip install requests
 
-      - name: Generate metrics HTML
+      - name: Generate metrics HTML (pre-load test)
         run: |
           curl http://localhost:9090/api/v1/query?query=http_server_requests_seconds_sum || echo "Failed to query Prometheus"
           python generate_metrics_page.py
           ls -la public
           cat public/index.html
 
-      - name: Deploy to Netlify
+      - name: Deploy to Netlify (pre-load test)
         uses: nwtgck/actions-netlify@v3.0.0
         with:
           publish-dir: './public'
           production-branch: main
-          deploy-message: '${{ github.event.head_commit.message }}'
+          deploy-message: '${{ github.event.head_commit.message }} (pre-load test)'
         env:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+  load-test:
+    runs-on: ubuntu-latest
+    needs: deploy-and-monitor
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create Docker network if not exists
+        run: |
+          docker network inspect microservices-net >/dev/null 2>&1 || \
+          docker network create microservices-net
+
+      - name: Run k6 load test
+        run: |
+          docker run --rm \
+            -v ${GITHUB_WORKSPACE}:/scripts \
+            --network microservices-net \
+            grafana/k6:latest run /scripts/load-test.js
+
+      - name: Wait for Prometheus to collect load test metrics
+        run: sleep 60
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        run: pip install requests
+
+      - name: Generate metrics HTML (post-load test)
+        run: |
+          curl http://localhost:9090/api/v1/query?query=http_server_requests_seconds_sum || echo "Failed to query Prometheus"
+          python generate_metrics_page.py
+          ls -la public
+          cat public/index.html
+
+      - name: Deploy to Netlify (post-load test)
+        uses: nwtgck/actions-netlify@v3.0.0
+        with:
+          publish-dir: './public'
+          production-branch: main
+          deploy-message: '${{ github.event.head_commit.message }} (post-load test)'
+        env:
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+
 
 
 
