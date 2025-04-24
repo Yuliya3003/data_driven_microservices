@@ -128,21 +128,6 @@ jobs:
           curl http://localhost:9090/api/v1/status/config || echo "Failed to get Prometheus config"
           curl http://localhost:9090/api/v1/targets || echo "Failed to get Prometheus targets"
 
-      - name: Deploy to server
-        env:
-          DEPLOY_SERVER: ${{ secrets.DEPLOY_SERVER }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-        run: |
-          echo "$DEPLOY_KEY" > deploy_key
-          chmod 600 deploy_key
-          ssh -i deploy_key -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_SERVER << 'EOF'
-            mkdir -p ~/taskmanager
-            cd ~/taskmanager
-            docker-compose down
-            docker-compose pull
-            docker-compose up -d
-          EOF
 
   load-test:
     runs-on: ubuntu-latest
