@@ -86,6 +86,11 @@ jobs:
       - name: Start microservices with Docker Compose
         run: docker-compose up -d
 
+      - name: Create Docker network if not exists
+        run: |
+          docker network inspect microservices-net >/dev/null 2>&1 || \
+          docker network create microservices-net
+
       - name: Start Prometheus manually
         run: |
           docker run -d \
