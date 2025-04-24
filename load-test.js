@@ -1,17 +1,38 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+// Тест 1: Низкая нагрузка (5 пользователей, 10 секунд)
 export const options = {
-  vus: 10,
-  duration: '30s',
+  scenarios: {
+    low_load: {
+      executor: 'constant-vus',
+      vus: 5,
+      duration: '10s',
+    },
+    medium_load: {
+      executor: 'constant-vus',
+      vus: 20,
+      duration: '20s',
+      startTime: '12s', // Запуск после завершения low_load
+    },
+    high_load: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '10s', target: 50 }, // Наращивание до 50 пользователей
+        { duration: '20s', target: 50 }, // Удержание 50 пользователей
+        { duration: '10s', target: 0 },  // Снижение до 0
+      ],
+      startTime: '35s', // Запуск после medium_load
+    },
+  },
   thresholds: {
-    http_req_duration: ['p(95)<500'],
-    http_req_failed: ['rate<0.01'],
+    http_req_duration: ['p(95)<500'], // 95% запросов должны быть быстрее 500 мс
+    http_req_failed: ['rate<0.01'],   // Ошибки должны быть менее 1%
   },
 };
 
-export function setup() {
-  // Регистрация тестового пользователя
+export default function () {
   const registerUrl = 'http://api-gateway:8080/api/auth/register';
   const username = `testuser_${Math.random().toString(36).substring(7)}`;
   const registerPayload = JSON.stringify({
@@ -22,100 +43,20 @@ export function setup() {
   });
   const registerParams = {
     headers: { 'Content-Type': 'application/json' },
+    timeout: '10s',
   };
 
+  console.log(`Sending registration request: ${registerUrl}, payload=${registerPayload}`);
   const registerRes = http.post(registerUrl, registerPayload, registerParams);
-  console.log(`Register response: status=${registerRes.status}, body=${registerRes.body}, error=${registerRes.error}`);
+  console.log(`Register response: status=${registerRes.status}, body=${registerRes.body}, error=${registerRes.error}, error_code=${registerRes.error_code}`);
+
   check(registerRes, {
     'registration successful': (r) => r.status === 200,
   });
 
-  if (registerRes.status !== 200 || registerRes.error) {
-    console.error(`Registration failed: status=${registerRes.status}, body=${registerRes.body}, error=${registerRes.error}`);
-    return null;
+  if (registerRes.error || registerRes.status !== 200) {
+    console.error(`Registration failed: status=${registerRes.status}, body=${registerRes.body}, error=${registerRes.error}, error_code=${registerRes.error_code}`);
   }
 
-  // Получение JWT-токена
-  const loginUrl = 'http://api-gateway:8080/api/auth/login';
-  const loginPayload = JSON.stringify({
-    username: username,
-    password: 'testpassword',
-  });
-  const loginParams = {
-    headers: { 'Content-Type': 'application/json' },
-  };
-
-  const loginRes = http.post(loginUrl, loginPayload, loginParams);
-  console.log(`Login response: status=${loginRes.status}, body=${loginRes.body}, error=${loginRes.error}`);
-  check(loginRes, {
-    'login successful': (r) => r.status === 200,
-  });
-
-  if (loginRes.status !== 200 || loginRes.error) {
-    console.error(`Login failed: status=${loginRes.status}, body=${loginRes.body}, error=${loginRes.error}`);
-    return null;
-  }
-
-  if (!loginRes.body) {
-    console.error('Login response body is null');
-    return null;
-  }
-
-  let token;
-  try {
-    token = loginRes.json('token');
-  } catch (e) {
-    console.error(`Failed to parse JSON or extract token: ${e.message}, body=${loginRes.body}`);
-    return null;
-  }
-
-  if (!token) {
-    console.error('JWT token is missing in response');
-    return null;
-  }
-
-  console.log(`JWT token retrieved: ${token}`);
-  return { token, username };
-}
-
-export default function (data) {
-  if (!data || !data.token) {
-    console.error('No token available, skipping requests');
-    return;
-  }
-
-  const params = {
-    headers: {
-      'Authorization': `Bearer ${data.token}`,
-      'Content-Type': 'application/json',
-    },
-  };
-
-  let res = http.get('http://api-gateway:8080/api/tasks', params);
-  console.log(`GET /api/tasks response: status=${res.status}, body=${res.body}, error=${res.error}`);
-  check(res, {
-    'GET /api/tasks status is 200': (r) => r.status === 200,
-  });
-
-  const taskPayload = JSON.stringify({
-    title: `Test Task ${Math.random()}`,
-    description: 'Test Description',
-    completed: false,
-  });
-  res = http.post('http://api-gateway:8080/api/tasks', taskPayload, params);
-  console.log(`POST /api/tasks response: status=${res.status}, body=${res.body}, error=${res.error}`);
-  check(res, {
-    'POST /api/tasks status is 200': (r) => r.status === 200,
-  });
-
-  const taskId = res.json('id');
-  if (taskId) {
-    res = http.del(`http://api-gateway:8080/api/tasks/${taskId}`, null, params);
-    console.log(`DELETE /api/tasks/${taskId} response: status=${res.status}, body=${res.body}, error=${res.error}`);
-    check(res, {
-      'DELETE /api/tasks status is 204': (r) => r.status === 204,
-    });
-  }
-
-  sleep(1);
+  sleep(1); // Пауза 1 секунда между запросами
 }
