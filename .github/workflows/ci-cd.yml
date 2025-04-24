@@ -81,14 +81,15 @@ jobs:
           ls -la prometheus.yml
           cat prometheus.yml
 
+      - name: Create Docker network
+        run: |
+          echo "Creating Docker network microservices-net..."
+          docker network create microservices-net && echo "Network created successfully" || { echo "Failed to create network"; exit 1; }
+
       - name: Build and push Docker images
         run: |
           docker-compose build
           docker-compose push
-
-      - name: Create Docker network
-        run: |
-          docker network create microservices-net || true
 
       - name: Start microservices
         run: docker-compose up -d
@@ -104,18 +105,25 @@ jobs:
 
       - name: Wait for services and check availability
         run: |
-          sleep 60  
-         
+          echo "Waiting for services to be ready..."
+          sleep 60
           until curl -f http://localhost:8761 || [ $? -eq 7 ]; do
             echo "Waiting for Eureka to be ready..."
             sleep 5
           done
-          
           until curl -f http://localhost:8080/actuator/health || [ $? -eq 7 ]; do
             echo "Waiting for api-gateway to be ready..."
             sleep 5
           done
           echo "Services are ready"
+
+      - name: Debug network
+        run: |
+          echo "Checking network configuration..."
+          docker network ls
+          docker network inspect microservices-net
+          docker run --rm --network microservices-net alpine nslookup api-gateway || echo "Failed to resolve api-gateway"
+          docker run --rm --network microservices-net alpine ping -c 4 api-gateway || echo "Failed to ping api-gateway"
 
       - name: Check service metrics
         run: |
@@ -128,14 +136,6 @@ jobs:
           curl http://localhost:9090/api/v1/status/config || echo "Failed to get Prometheus config"
           curl http://localhost:9090/api/v1/targets || echo "Failed to get Prometheus targets"
 
-
-  load-test:
-    runs-on: ubuntu-latest
-    needs: deploy-and-monitor
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Run k6 load test
         run: |
           docker run --rm \
@@ -144,7 +144,14 @@ jobs:
             grafana/k6:latest run /scripts/load-test.js
 
       - name: Wait for Prometheus to collect metrics
-        run: sleep 60
+        run: |
+          echo "Waiting for Prometheus to collect metrics..."
+          sleep 60
+
+      - name: Check Prometheus metrics after load test
+        run: |
+          curl http://localhost:9090/api/v1/query?query=http_server_requests_seconds_sum || echo "Failed to query Prometheus metrics"
+          curl http://localhost:9090/api/v1/query?query=http_server_requests_total || echo "Failed to query Prometheus total requests"
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -156,7 +163,6 @@ jobs:
 
       - name: Generate metrics HTML
         run: |
-          curl http://localhost:9090/api/v1/query?query=http_server_requests_seconds_sum || echo "Failed to query Prometheus"
           python generate_metrics_page.py
           ls -la public
           cat public/index.html
@@ -170,6 +176,10 @@ jobs:
         env:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+
+
+
 
 
 
