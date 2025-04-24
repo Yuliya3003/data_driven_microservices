@@ -126,6 +126,18 @@ jobs:
         run: |
           curl http://localhost:9090/api/v1/status/config || echo "Failed to get Prometheus config"
           curl http://localhost:9090/api/v1/targets || echo "Failed to get Prometheus targets"
+      - name: Debug container status and network
+        run: |
+          echo "Listing all containers"
+          docker ps -a
+          echo "Inspecting microservices-net network"
+          docker network inspect microservices-net
+          echo "Checking api-gateway logs"
+          docker-compose logs api-gateway
+          echo "Testing DNS resolution for api-gateway"
+          docker run --rm --network microservices-net alpine nslookup api-gateway
+          echo "Testing connectivity to api-gateway"
+          docker run --rm --network microservices-net curlimages/curl curl -v http://api-gateway:8080/actuator/health || echo "Failed to connect to api-gateway"
 
       - name: Run k6 load test
         run: |
