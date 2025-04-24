@@ -83,7 +83,7 @@ jobs:
           docker-compose build
           docker-compose push
 
-      - name: Start services with Docker Compose
+      - name: Start microservices with Docker Compose
         run: docker-compose up -d
 
       - name: Start Prometheus manually
@@ -92,18 +92,20 @@ jobs:
             --name prometheus \
             -p 9090:9090 \
             -v ${GITHUB_WORKSPACE}/prometheus.yml:/etc/prometheus/prometheus.yml \
+            --network microservices-net \
             prom/prometheus:latest
+
+      - name: Wait for services to start
+        run: sleep 20
 
       - name: Check service metrics endpoints
         run: |
-          sleep 15
           docker-compose exec api-gateway curl http://localhost:8080/actuator/prometheus || echo "API Gateway metrics unavailable"
           docker-compose exec user-service curl http://localhost:8081/actuator/prometheus || echo "User Service metrics unavailable"
           docker-compose exec task-service curl http://localhost:8082/actuator/prometheus || echo "Task Service metrics unavailable"
 
       - name: Check Prometheus status
         run: |
-          sleep 15
           curl http://localhost:9090/api/v1/status/config || echo "Failed to get Prometheus config"
           curl http://localhost:9090/api/v1/targets || echo "Failed to get Prometheus targets"
 
@@ -134,6 +136,7 @@ jobs:
         env:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
 
 
 

@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   eureka-server:
     build:
@@ -83,15 +84,6 @@ services:
       - eureka-server
       - user-service
       - task-service
-    networks:
-      - microservices-net
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
     networks:
       - microservices-net
 
