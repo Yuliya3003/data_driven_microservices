@@ -57,6 +57,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Clean up existing prometheus.yml
+        run: |
+          rm -rf prometheus.yml  
+          echo "Removed any existing prometheus.yml"
+
+      - name: Create prometheus.yml
+        run: |
+          cat <<EOF > prometheus.yml
+          global:
+            scrape_interval: 15s
+          scrape_configs:
+            - job_name: 'api-gateway'
+              static_configs:
+                - targets: ['api-gateway:8080']
+            - job_name: 'user-service'
+              static_configs:
+                - targets: ['user-service:8081']
+            - job_name: 'task-service'
+              static_configs:
+                - targets: ['task-service:8082']
+          EOF
+          ls -la prometheus.yml
+          cat prometheus.yml
+          chmod 644 prometheus.yml  
+
       - name: Check if prometheus.yml exists
         run: |
           ls -la
@@ -90,38 +115,32 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Create prometheus.yml
-        run: |
-          cat <<EOF > prometheus.yml
-          global:
-            scrape_interval: 15s
-          scrape_configs:
-            - job_name: 'api-gateway'
-              static_configs:
-                - targets: ['api-gateway:8080']
-            - job_name: 'user-service'
-              static_configs:
-                - targets: ['user-service:8081']
-            - job_name: 'task-service'
-              static_configs:
-                - targets: ['task-service:8082']
-          EOF
-          ls -la prometheus.yml
-          cat prometheus.yml
-
       - name: Build and push Docker images
         run: |
           docker-compose build
           docker-compose push
           docker-compose up -d
 
+      - name: Check service metrics endpoints
+        run: |
+          sleep 10
+          docker-compose exec api-gateway curl http://localhost:8080/actuator/prometheus || echo "API Gateway metrics unavailable"
+          docker-compose exec user-service curl http://localhost:8081/actuator/prometheus || echo "User Service metrics unavailable"
+          docker-compose exec task-service curl http://localhost:8082/actuator/prometheus || echo "Task Service metrics unavailable"
+
       - name: Check Prometheus logs
         run: |
+          sleep 10
           docker-compose logs prometheus
+
+      - name: Check Prometheus status
+        run: |
+          curl http://localhost:9090/api/v1/status/config || echo "Failed to get Prometheus config"
+          curl http://localhost:9090/api/v1/targets || echo "Failed to get Prometheus targets"
 
       - name: Wait for Prometheus to collect metrics
         run: |
-          sleep 30
+          sleep 60
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -134,8 +153,10 @@ jobs:
 
       - name: Generate metrics HTML
         run: |
+          curl http://localhost:9090/api/v1/query?query=http_server_requests_seconds_sum || echo "Failed to query Prometheus"
           python generate_metrics_page.py
           ls -la public
+          cat public/index.html
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0.0
@@ -146,6 +167,8 @@ jobs:
         env:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+
 
 
 
