@@ -103,6 +103,51 @@ jobs:
             --network microservices-net \
             prom/prometheus:latest
 
+      - name: Wait for services and check availability
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 120  # Начальное ожидание 2 минуты
+          # Проверка готовности user-db
+          until docker-compose exec -T user-db mysqladmin ping -h localhost -u root -p3003 --silent; do
+            echo "Waiting for user-db to be ready..."
+            sleep 5
+          done
+          # Проверка готовности task-db
+          until docker-compose exec -T task-db mysqladmin ping -h localhost -u root -p3003 --silent; do
+            echo "Waiting for task-db to be ready..."
+            sleep 5
+          done
+          # Проверка создания базы user_db
+          until docker-compose exec -T user-db mysql -u root -p3003 -e "SHOW DATABASES LIKE 'user_db';" | grep user_db; do
+            echo "Waiting for user_db to be created..."
+            sleep 5
+          done
+          # Проверка создания базы task_db
+          until docker-compose exec -T task-db mysql -u root -p3003 -e "SHOW DATABASES LIKE 'task_db';" | grep task_db; do
+            echo "Waiting for task_db to be created..."
+            sleep 5
+          done
+          # Проверка готовности eureka-server
+          until curl -f http://localhost:8761/actuator/health; do
+            echo "Waiting for eureka-server to be ready..."
+            sleep 5
+          done
+          # Проверка готовности api-gateway
+          until curl -f http://localhost:8080/actuator/health; do
+            echo "Waiting for api-gateway to be ready..."
+            sleep 5
+          done
+          # Проверка готовности user-service
+          until curl -f http://localhost:8081/actuator/health; do
+            echo "Waiting for user-service to be ready..."
+            sleep 5
+          done
+          # Проверка готовности task-service
+          until curl -f http://localhost:8082/actuator/health; do
+            echo "Waiting for task-service to be ready..."
+            sleep 5
+          done
+          echo "All services are ready"
 
       - name: Debug network and services
         run: |
@@ -126,6 +171,7 @@ jobs:
         run: |
           curl http://localhost:9090/api/v1/status/config || echo "Failed to get Prometheus config"
           curl http://localhost:9090/api/v1/targets || echo "Failed to get Prometheus targets"
+
       - name: Debug container status and network
         run: |
           echo "Listing all containers"
