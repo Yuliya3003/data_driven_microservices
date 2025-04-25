@@ -124,19 +124,6 @@ services:
       timeout: 5s
       retries: 5
 
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    networks:
-      - microservices-net
-    depends_on:
-      - user-service
-      - task-service
-      - api-gateway
-
 networks:
   microservices-net:
     driver: bridge
