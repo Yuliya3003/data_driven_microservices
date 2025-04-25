@@ -9,6 +9,11 @@ services:
       - "8761:8761"
     networks:
       - microservices-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   user-db:
     image: mysql:8
@@ -21,6 +26,11 @@ services:
       - user-db-data:/var/lib/mysql
     networks:
       - microservices-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p3003"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   task-db:
     image: mysql:8
@@ -33,6 +43,11 @@ services:
       - task-db-data:/var/lib/mysql
     networks:
       - microservices-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p3003"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   user-service:
     build:
@@ -41,17 +56,24 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://user-db:3306/user_db
+      - SPRING_DATASOURCE_URL=jdbc:mysql://user-db:3306/user_db?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=3003
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=your-very-secure-secret-key
       - JWT_EXPIRATION=86400000
     depends_on:
-      - user-db
-      - eureka-server
+      user-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     networks:
       - microservices-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   task-service:
     build:
@@ -60,16 +82,23 @@ services:
     ports:
       - "8082:8082"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://task-db:3306/task_db
+      - SPRING_DATASOURCE_URL=jdbc:mysql://task-db:3306/task_db?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=3003
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=your-very-secure-secret-key
     depends_on:
-      - task-db
-      - eureka-server
+      task-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     networks:
       - microservices-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api-gateway:
     build:
@@ -81,11 +110,32 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=your-very-secure-secret-key
     depends_on:
-      - eureka-server
-      - user-service
-      - task-service
+      eureka-server:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      task-service:
+        condition: service_healthy
     networks:
       - microservices-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - microservices-net
+    depends_on:
+      - user-service
+      - task-service
+      - api-gateway
 
 networks:
   microservices-net:
